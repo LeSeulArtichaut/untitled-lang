@@ -168,6 +168,12 @@ Fixpoint stmt_eval (fuel : nat) (st : state) (s : stmt) : option state :=
     end
   end.
 
+Definition expr_equivalence (e1 e2 : expr) : Prop :=
+  forall st v, e1 / st ==> v <-> e2 / st ==> v.
+
+Definition stmt_equivalence (s1 s2 : stmt) : Prop :=
+  forall st st', st =[ s1 ]=> st' <-> st' =[ s2 ]=> st'.
+
 #[export] Hint Constructors expr_evalR stmt_evalR : core.
 
 Theorem expr_eval_evalR_equiv: forall st e v,
