@@ -1,4 +1,5 @@
-From UntitledLang Require Import Ast Evaluation Map.
+From UntitledLang Require Import Map.
+From UntitledLang.deterministic Require Import Ast Evaluation.
 
 #[local] Hint Resolve update_eq : core.
 

@@ -1,5 +1,6 @@
 Require Import Nat Arith.PeanoNat String.
-From UntitledLang Require Import Ast Map OptMonadNotation.
+From UntitledLang Require Import Map OptMonadNotation.
+From UntitledLang.deterministic Require Import Ast.
 
 Open Scope mylang_scope.
 Open Scope opt_monad_scope.

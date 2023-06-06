@@ -1,6 +1,6 @@
 -R . UntitledLang
 OptMonadNotation.v
 Map.v
-Ast.v
-Evaluation.v
-Typing.v
+deterministic/Ast.v
+deterministic/Evaluation.v
+deterministic/Typing.v
