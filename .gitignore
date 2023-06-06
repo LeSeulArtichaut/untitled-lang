@@ -1,6 +1,7 @@
 Makefile
 Makefile.conf
 .Makefile.d
+.lia.cache
 
 *.aux
 *.glob

@@ -26,8 +26,14 @@ Proof.
 Qed.
 
 Theorem update_shadow: forall V (m : map V) x v1 v2,
-  (x |-> v1; x |-> v2; m) x = Some v1.
-Proof. intros. unfold update. rewrite String.eqb_refl. reflexivity. Qed.
+  (x |-> v1; x |-> v2; m) = (x |-> v1; m).
+Proof.
+  intros.
+  apply functional_extensionality; intros y.
+  destruct (String.eqb_spec x y).
+  - subst. repeat rewrite update_eq. reflexivity.
+  - repeat (rewrite update_neq; trivial).
+Qed.
 
 Theorem update_same: forall V (m : map V) x v,
   m x = Some v -> (x |-> v; m) = m.
