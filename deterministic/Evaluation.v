@@ -1,4 +1,4 @@
-Require Import Nat Arith.PeanoNat String.
+Require Import Nat Arith.PeanoNat String Relations.Relation_Operators.
 From UntitledLang Require Import Map OptMonadNotation.
 From UntitledLang.deterministic Require Import Ast.
 
@@ -16,7 +16,8 @@ Reserved Notation "e '/' st '==>' v " (at level 40, st at level 39, v at level 3
 Reserved Notation "st '=[' s ']=>' st'"
   (at level 40, s custom mylang at level 99,
    st constr, st' constr at next level).
-(* Reserved Notation "s '/' st --> s' '/' st'" (at level 40, st at level 39, s' at level 39). *)
+Reserved Notation "s '/' st '-->e' s'" (at level 40, st at level 39, s' at level 39).
+Reserved Notation "s '/' st '-->' s' '/' st'" (at level 40, st at level 39, s' at level 39).
 
 Inductive value :=
   | V_Bool (b : bool)
@@ -110,9 +111,6 @@ Inductive expr_evalR : state -> expr -> value -> Prop :=
 
 where "e '/' st '==>' v " := (expr_evalR st e v).
 
-Definition expr_equiv (e1 e2 : expr) :=
-  forall st, expr_eval st e1 = expr_eval st e2.
-
 Inductive stmt_evalR : state -> stmt -> state -> Prop :=
   | Eval_Skip : forall st, st =[ skip ]=> st
   | Eval_Assign : forall st x e v,
@@ -169,13 +167,123 @@ Fixpoint stmt_eval (fuel : nat) (st : state) (s : stmt) : option state :=
     end
   end.
 
-Definition expr_equivalence (e1 e2 : expr) : Prop :=
-  forall st v, e1 / st ==> v <-> e2 / st ==> v.
+Inductive expr_value : expr -> Prop :=
+  | Value_Bool : forall (b : bool), expr_value b
+  | Value_Nat : forall (n : nat), expr_value n.
+  
+Inductive expr_stepR : state -> expr -> expr -> Prop :=
+  | Step_VarBool : forall st x b,
+      st x = Some (V_Bool b) ->
+      x / st -->e b
+  | Step_VarNat : forall st x n,
+      st x = Some (V_Nat n) ->
+      x / st -->e n
+  | Step_AndStepL : forall st e1 e1' e2,
+      e1 / st -->e e1' ->
+      <{ e1 && e2 }> / st -->e <{ e1' && e2 }>
+  | Step_AndStepR : forall st (b1 : bool) e2 e2',
+      e2 / st -->e e2' ->
+      <{ b1 && e2 }> / st -->e <{ b1 && e2' }>
+  | Step_And : forall st (b1 b2 : bool),
+      <{ b1 && b2 }> / st -->e (b1 && b2)
+  | Step_OrStepL : forall st e1 e1' e2,
+      e1 / st -->e e1' ->
+      <{ e1 || e2 }> / st -->e <{ e1' || e2 }>
+  | Step_OrStepR : forall st (b1 : bool) e2 e2',
+      e2 / st -->e e2' ->
+      <{ b1 || e2 }> / st -->e <{ b1 || e2' }>
+  | Step_Or : forall st (b1 b2 : bool),
+      <{ b1 || b2 }> / st -->e (b1 || b2)
+  | Step_NotStep : forall st e e',
+      e / st -->e e' ->
+      <{ ~e }> / st -->e <{ ~e' }>
+  | Step_Not : forall st (b : bool),
+      <{ ~b }> / st -->e b
+  | Step_PlusStepL : forall st e1 e1' e2,
+      e1 / st -->e e1' ->
+      <{ e1 + e2 }> / st -->e <{ e1' + e2 }>
+  | Step_PlusStepR : forall st (n1 : nat) e2 e2',
+      e2 / st -->e e2' ->
+      <{ n1 + e2 }> / st -->e <{ n1 + e2' }>
+  | Step_Plus : forall st (n1 n2 : nat),
+      <{ n1 + n2 }> / st -->e (n1 + n2)
+  | Step_MultStepL : forall st e1 e1' e2,
+      e1 / st -->e e1' ->
+      <{ e1 * e2 }> / st -->e <{ e1' * e2 }>
+  | Step_MultStepR : forall st (n1 : nat) e2 e2',
+      e2 / st -->e e2' ->
+      <{ n1 * e2 }> / st -->e <{ n1 * e2' }>
+  | Step_Mult : forall st (n1 n2 : nat),
+      <{ n1 * n2 }> / st -->e (n1 * n2)
+  | Step_EqStepL : forall st e1 e1' e2,
+      e1 / st -->e e1' ->
+      <{ e1 = e2 }> / st -->e <{ e1' = e2 }>
+  | Step_EqBoolStepR : forall st (b1 : bool) e2 e2',
+      e2 / st -->e e2' ->
+      <{ b1 = e2 }> / st -->e <{ b1 = e2' }>
+  | Step_EqNatStepR : forall st (n1 : nat) e2 e2',
+      e2 / st -->e e2' ->
+      <{ n1 = e2 }> / st -->e <{ n1 = e2' }>
+  | Step_EqBool : forall st (b1 b2 : bool),
+      <{ b1 = b2 }> / st -->e (Bool.eqb b1 b2)
+  | Step_EqNat : forall st (n1 n2 : nat),
+      <{ n1 = n2 }> / st -->e (Nat.eqb n1 n2)
+  | Step_LeStepL : forall st e1 e1' e2,
+      e1 / st -->e e1' ->
+      <{ e1 <= e2 }> / st -->e <{ e1' <= e2 }>
+  | Step_LeStepR : forall st (n1 : nat) e2 e2',
+      e2 / st -->e e2' ->
+      <{ n1 <= e2 }> / st -->e <{ n1 <= e2' }>
+  | Step_Le : forall st (n1 n2 : nat),
+      <{ n1 <= n2 }> / st -->e (n1 <=? n2)
 
-Definition stmt_equivalence (s1 s2 : stmt) : Prop :=
-  forall st st', st =[ s1 ]=> st' <-> st' =[ s2 ]=> st'.
+where "s '/' st '-->e' s'" := (expr_stepR st s s'): mylang_scope.
 
-#[export] Hint Constructors expr_evalR stmt_evalR : core.
+Definition expr_reduceR st := clos_refl_trans expr (expr_stepR st).
+
+Notation "s '/' st '-->e*' s'" := (expr_reduceR st s s')
+  (at level 40, st at level 39, s' at level 39): mylang_scope.
+
+Inductive stmt_stepR : state * stmt -> state * stmt -> Prop :=
+  | Step_AssignStep : forall st x e e',
+      e / st -->e e' ->
+      <{ x := e }> / st --> <{ x := e' }> / st
+  | Step_AssignBool : forall st x (b : bool),
+      <{ x := b }> / st --> <{ skip }> / (x |-> b; st)
+  | Step_AssignNat : forall st x (n : nat),
+      <{ x := n }> / st --> <{ skip }> / (x |-> n; st)
+  | Step_SeqStep : forall st st' s1 s1' s2,
+      s1 / st --> s1' / st' ->
+      <{ s1; s2 }> / st --> <{ s1'; s2 }> / st'
+  | Step_Seq : forall st s2,
+      <{ skip; s2 }> / st --> s2 / st
+  | Step_IfStep : forall st cond cond' s1 s2,
+      cond / st -->e cond' ->
+      <{ if cond then s1 else s2 end }> / st --> <{ if cond' then s1 else s2 end }> / st
+  | Step_IfTrue : forall st s1 s2,
+      <{ if true then s1 else s2 end }> / st --> s1 / st
+  | Step_IfFalse : forall st s1 s2,
+      <{ if false then s1 else s2 end }> / st --> s2 / st
+  | Step_While : forall st cond s,
+      <{ while cond do s done }> / st -->
+        <{ if cond then while cond do s done else skip end }> / st
+
+where "s '/' st '-->' s' '/' st'" := (stmt_stepR (st, s) (st', s')).
+
+Definition stmt_reduceR := clos_refl_trans (state * stmt) stmt_stepR.
+
+Notation "s '/' st '-->*' s' '/' st'" := (stmt_reduceR (st, s) (st', s'))
+  (at level 40, st at level 39, s' at level 39): mylang_scope.
+
+#[export] Hint Constructors expr_evalR stmt_evalR expr_value expr_stepR stmt_stepR : core.
+#[local] Hint Constructors clos_refl_trans : core.
+
+Example ex_stmt_reduce_to_skip :
+  <{ x := 1; y := 2 }> / empty
+    -->* <{ skip }> / (y |-> V_Nat 2; x |-> V_Nat 1).
+Proof.
+  apply rt_trans with (x |-> V_Nat 1, <{ skip; y := 2 }>); eauto.
+Qed.
 
 Theorem expr_eval_evalR_equiv: forall st e v,
   e / st ==> v <-> expr_eval st e = Some v.
@@ -333,9 +441,22 @@ Proof.
   - specialize (expr_evalR_deterministic st cond false true H H2). discriminate.
 Qed.
 
-Definition stmt_ex := <{ x := 9 * 9; y := x + 4 + 5 }>.
+Theorem expr_stepR_deterministic : forall st e e' e'',
+  e / st -->e e' ->
+  e / st -->e e'' ->
+  e' = e''.
+Admitted.
 
-Example stmt_ex_eval : empty =[ stmt_ex ]=> (y |-> V_Nat 90; x |-> V_Nat 81).
-Proof.
-  repeat econstructor; rewrite expr_eval_evalR_equiv; reflexivity.
-Qed.
+Theorem stmt_stepR_deterministic : forall st st' st'' s s' s'',
+  s / st --> s' / st' ->
+  s / st --> s'' / st'' ->
+  s' = s'' /\ st' = st''.
+Admitted.
+
+Theorem expr_evalR_stepR_equiv: forall st e (b : bool),
+  e / st ==> b <-> e / st -->e* b.
+Admitted.
+
+Theorem stmt_evalR_stepR_equiv: forall st st' s,
+  st =[ s ]=> st' <-> s / st -->* <{ skip }> / st'.
+Admitted.

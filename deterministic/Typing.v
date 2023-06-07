@@ -87,57 +87,6 @@ Definition well_typed_state (Gamma : context) (st : state) : Prop :=
 
 #[export] Hint Constructors type value_has_type expr_has_type well_typed_stmt : core.
 
-(* (* Helper macro for the next theorem *)
-Ltac invert_soundness_IH st e IHe Hv v T :=
-  destruct (expr_eval st e) as [v|]; [| discriminate];
-  assert (Hv: value_has_type v T) by (apply IHe; trivial);
-  inversion Hv; subst.
-
-Theorem expr_eval_soundness: forall Gamma st e T v,
-  well_typed_state Gamma st ->
-  Gamma |- e : T ->
-  expr_eval st e = Some v ->
-  value_has_type v T.
-Proof.
-  intros Gamma st e T v Hst. generalize dependent v. generalize dependent T.
-  induction e; intros T v He Heval; inversion He; subst; simpl in *.
-  - destruct (Hst x T H1) as [v' [Hv' Htyv]].
-    rewrite Hv' in Heval. injection Heval as Evv'; subst v'. apply Htyv.
-  - injection Heval as E; subst v. apply Ty_VBool.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Bool }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Bool }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VBool.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Bool }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Bool }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VBool.
-  - invert_soundness_IH st e IHe Hv' v' <{ Bool }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VBool.
-  - injection Heval as E; subst v. apply Ty_VNat.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Nat }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Nat }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VNat.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Nat }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Nat }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VNat.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Bool }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Bool }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VBool.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Nat }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Nat }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VBool.
-  - invert_soundness_IH st e1 IHe1 Hv1 v1 <{ Nat }>.
-    invert_soundness_IH st e2 IHe2 Hv2 v2 <{ Nat }>.
-    injection Heval as Hv; subst v.
-    apply Ty_VBool.
-Qed. *)
-
 Theorem expr_evalR_soundness: forall Gamma st e T v,
   well_typed_state Gamma st ->
   Gamma |- e : T ->
