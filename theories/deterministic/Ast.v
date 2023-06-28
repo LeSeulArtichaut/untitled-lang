@@ -3,24 +3,29 @@ Import ListNotations. Open Scope string_scope.
 
 From UntitledLang Require Import Map.
 
+Inductive value :=
+  | V_Bool (b : bool)
+  | V_Nat (n : nat).
+
+Coercion V_Bool : bool >-> value.
+Coercion V_Nat : nat >-> value.
+
 Inductive expr : Type :=
-  (* variables *)
+  (* variables and constants *)
   | E_Var (x : ident)
+  | E_Const (v : value)
   (* booleans *)
-  | E_ConstBool (b : bool)
   | E_And (e1 e2 : expr)
   | E_Or (e1 e2 : expr)
   | E_Not (e : expr)
   (* Numbers *)
-  | E_ConstNat (n : nat)
   | E_Plus (e1 e2 : expr)
   | E_Mult (e1 e2 : expr)
   | E_Eq (e1 e2 : expr)
   | E_Le (e1 e2 : expr).
 
 Coercion E_Var : ident >-> expr.
-Coercion E_ConstBool : bool >-> expr.
-Coercion E_ConstNat : nat >-> expr.
+Coercion E_Const : value >-> expr.
 
 Inductive stmt : Type :=
   | S_Skip

@@ -18,20 +18,14 @@ Reserved Notation "st '=[' s ']=>' st'"
    st constr, st' constr at next level).
 Reserved Notation "s '/' st '-->e' s'" (at level 40, st at level 39, s' at level 39).
 Reserved Notation "s '/' st '-->' s' '/' st'" (at level 40, st at level 39, s' at level 39).
-
-Inductive value :=
-  | V_Bool (b : bool)
-  | V_Nat (n : nat).
-
-Coercion V_Bool : bool >-> value.
-Coercion V_Nat : nat >-> value.
+Reserved Notation "s '/' st '-->e*' s'" (at level 40, st at level 39, s' at level 39).
 
 Definition state := map value.
 
 Fixpoint expr_eval (st : state) (e : expr) : option value :=
   match e with
   | E_Var x => st x
-  | E_ConstBool b => Some (V_Bool b)
+  | E_Const v => Some v
   | <{ e1 && e2 }> =>
     match expr_eval st e1, expr_eval st e2 with
     | Some (V_Bool b1), Some (V_Bool b2) => Some (V_Bool (b1 && b2))
@@ -47,7 +41,6 @@ Fixpoint expr_eval (st : state) (e : expr) : option value :=
     | Some (V_Bool b1) => Some (V_Bool (negb b1))
     | _ => None
     end
-  | E_ConstNat n => Some (V_Nat n)
   | <{ e1 + e2 }> =>
     match expr_eval st e1, expr_eval st e2 with
     | Some (V_Nat n1), Some (V_Nat n2) => Some (V_Nat (n1 + n2))
@@ -75,7 +68,7 @@ Inductive expr_evalR : state -> expr -> value -> Prop :=
   | Eval_Var : forall st (x : ident) v,
       st x = Some v ->
       x / st ==> v
-  | Eval_ConstBool : forall st (b : bool), b / st ==> b
+  | Eval_Const : forall st (v : value), v / st ==> v
   | Eval_And : forall st e1 e2 (b1 b2 : bool),
       e1 / st ==> b1 ->
       e2 / st ==> b2 ->
@@ -87,7 +80,6 @@ Inductive expr_evalR : state -> expr -> value -> Prop :=
   | Eval_Not : forall st e (b : bool),
       e / st ==> b ->
       <{ ~e }> / st ==> (negb b)
-  | Eval_ConstNat : forall st (n : nat), n / st ==> n
   | Eval_Plus : forall st e1 e2 (n1 n2 : nat),
       e1 / st ==> n1 ->
       e2 / st ==> n2 ->
@@ -167,33 +159,24 @@ Fixpoint stmt_eval (fuel : nat) (st : state) (s : stmt) : option state :=
     end
   end.
 
-Inductive expr_value : expr -> Prop :=
-  | Value_Bool : forall (b : bool), expr_value b
-  | Value_Nat : forall (n : nat), expr_value n.
-  
 Inductive expr_stepR : state -> expr -> expr -> Prop :=
-  | Step_VarBool : forall st x b,
-      st x = Some (V_Bool b) ->
-      x / st -->e b
-  | Step_VarNat : forall st x n,
-      st x = Some (V_Nat n) ->
-      x / st -->e n
+  | Step_Var : forall st x v,
+      st x = Some v ->
+      x / st -->e v
   | Step_AndStepL : forall st e1 e1' e2,
       e1 / st -->e e1' ->
       <{ e1 && e2 }> / st -->e <{ e1' && e2 }>
-  | Step_AndStepR : forall st (b1 : bool) e2 e2',
-      e2 / st -->e e2' ->
-      <{ b1 && e2 }> / st -->e <{ b1 && e2' }>
-  | Step_And : forall st (b1 b2 : bool),
-      <{ b1 && b2 }> / st -->e (b1 && b2)
+  | Step_AndTrue : forall st e2,
+      <{ true && e2 }> / st -->e e2
+  | Step_AndFalse : forall st e2,
+      <{ false && e2 }> / st -->e false
   | Step_OrStepL : forall st e1 e1' e2,
       e1 / st -->e e1' ->
       <{ e1 || e2 }> / st -->e <{ e1' || e2 }>
-  | Step_OrStepR : forall st (b1 : bool) e2 e2',
-      e2 / st -->e e2' ->
-      <{ b1 || e2 }> / st -->e <{ b1 || e2' }>
-  | Step_Or : forall st (b1 b2 : bool),
-      <{ b1 || b2 }> / st -->e (b1 || b2)
+  | Step_OrTrue : forall st e2,
+      <{ true || e2 }> / st -->e true
+  | Step_OrFalse : forall st e2,
+      <{ true || e2 }> / st -->e e2
   | Step_NotStep : forall st e e',
       e / st -->e e' ->
       <{ ~e }> / st -->e <{ ~e' }>
@@ -218,12 +201,9 @@ Inductive expr_stepR : state -> expr -> expr -> Prop :=
   | Step_EqStepL : forall st e1 e1' e2,
       e1 / st -->e e1' ->
       <{ e1 = e2 }> / st -->e <{ e1' = e2 }>
-  | Step_EqBoolStepR : forall st (b1 : bool) e2 e2',
+  | Step_EqStepR : forall st v e2 e2',
       e2 / st -->e e2' ->
-      <{ b1 = e2 }> / st -->e <{ b1 = e2' }>
-  | Step_EqNatStepR : forall st (n1 : nat) e2 e2',
-      e2 / st -->e e2' ->
-      <{ n1 = e2 }> / st -->e <{ n1 = e2' }>
+      <{ v = e2 }> / st -->e <{ v = e2' }>
   | Step_EqBool : forall st (b1 b2 : bool),
       <{ b1 = b2 }> / st -->e (Bool.eqb b1 b2)
   | Step_EqNat : forall st (n1 n2 : nat),
@@ -291,7 +271,7 @@ Proof with auto.
   intros st e. split.
   - (* evalR -> eval *)
     generalize dependent v. induction e;
-    intros v H; simpl; inversion H; subst...
+    intros v0 H; simpl; inversion H; subst...
     + rewrite (IHe1 b1)... rewrite (IHe2 b2)...
     + rewrite (IHe1 b1)... rewrite (IHe2 b2)...
     + rewrite (IHe b)...
@@ -302,7 +282,7 @@ Proof with auto.
     + rewrite (IHe1 n1)... rewrite (IHe2 n2)...
   - (* eval -> evalR *)
     generalize dependent v. induction e;
-    intros v H; simpl in H; try (injection H as H; subst)...
+    intros v0 H; simpl in H; try (injection H as H; subst)...
     + destruct (expr_eval st e1) as [v1|]; try destruct v1; try discriminate.
       destruct (expr_eval st e2) as [v2|]; try destruct v2; try discriminate.
       injection H as H; subst...

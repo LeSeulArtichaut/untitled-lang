@@ -25,6 +25,8 @@ Inductive expr_has_type : context -> expr -> type -> Prop :=
       Gamma |- x : T
   | Ty_ConstBool : forall Gamma (b : bool),
       Gamma |- b : Bool
+  | Ty_ConstNat : forall Gamma (n : nat),
+      Gamma |- n : Nat
   | Ty_And : forall Gamma e1 e2,
       Gamma |- e1 : Bool ->
       Gamma |- e2 : Bool ->
@@ -40,8 +42,6 @@ Inductive expr_has_type : context -> expr -> type -> Prop :=
       Gamma |- e1 : Bool ->
       Gamma |- e2 : Bool ->
       Gamma |- e1 = e2 : Bool
-  | Ty_ConstNat : forall Gamma (n : nat),
-      Gamma |- n : Nat
   | Ty_Plus : forall Gamma e1 e2,
       Gamma |- e1 : Nat ->
       Gamma |- e2 : Nat ->
@@ -94,7 +94,7 @@ Theorem expr_evalR_soundness: forall Gamma st e T v,
   value_has_type v T.
 Proof.
   intros Gamma st e T v Hst. generalize dependent v. generalize dependent T.
-  induction e; intros T v He Heval; inversion Heval; inversion He; subst; auto.
+  induction e; intros T v0 He Heval; inversion Heval; inversion He; subst; auto.
   - (* E_Var *)
     destruct (Hst x T H5) as [v' [Hv' Htyv]].
     rewrite H1 in Hv'. injection Hv' as Hv'; subst.
@@ -119,6 +119,7 @@ Proof with eauto.
   induction e; intros T He; inversion He; subst; simpl.
   - destruct (Hst x T H1) as [v Hv]...
   - exists b...
+  - exists n...
   - destruct (IHe1 <{ Bool }> H2) as [v1 [Hv1 Tv1]]; rewrite Hv1.
     destruct (IHe2 <{ Bool }> H4) as [v2 [Hv2 Tv2]]; rewrite Hv2.
     inversion Tv1; inversion Tv2; subst...
@@ -127,7 +128,6 @@ Proof with eauto.
     inversion Tv1; inversion Tv2; subst...
   - destruct (IHe <{ Bool }> H1) as [v [Hv Tv]]; rewrite Hv.
     inversion Tv; subst...
-  - exists n...
   - destruct (IHe1 <{ Nat }> H2) as [v1 [Hv1 Tv1]]; rewrite Hv1.
     destruct (IHe2 <{ Nat }> H4) as [v2 [Hv2 Tv2]]; rewrite Hv2.
     inversion Tv1; inversion Tv2; subst...
