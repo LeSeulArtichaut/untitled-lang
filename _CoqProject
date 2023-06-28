@@ -1,9 +1,2 @@
--R . UntitledLang
-OptMonadNotation.v
-Map.v
-deterministic/Ast.v
-deterministic/Evaluation.v
-deterministic/Typing.v
-branch/Ast.v
-branch/Evaluation.v
-branch/Typing.v
+-R theories UntitledLang
+theories/
